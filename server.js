@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 });
 
 app.post('/webhook/elementor', async (req, res) => {
-  console.log('Received webhook:', req.body);
+  console.log('Received webhook:', JSON.stringify(req.body, null, 2));
   
   try {
     const formData = req.body;
@@ -64,32 +64,43 @@ function formatMessage(formData) {
   let message = `*Nova submissão de formulário*\n`;
   message += `Data/Hora: ${timestamp}\n\n`;
   
-  const fields = {
+  const fieldMapping = {
     'name': 'Nome',
-    'nome': 'Nome',
+    'field_cef3ba0': 'Empresa',
+    'field_389b567': 'Site',
+    'field_69b2d23': 'Telefone',
     'email': 'E-mail',
-    'phone': 'Telefone',
-    'telefone': 'Telefone',
-    'message': 'Mensagem',
-    'mensagem': 'Mensagem',
-    'subject': 'Assunto',
-    'assunto': 'Assunto'
+    'message': 'Mensagem'
   };
   
-  for (const [key, label] of Object.entries(fields)) {
-    if (formData[key]) {
-      message += `*${label}:* ${formData[key]}\n`;
+  const extractedFields = {};
+  
+  if (formData.fields && typeof formData.fields === 'object') {
+    for (const [fieldId, fieldData] of Object.entries(formData.fields)) {
+      if (fieldData && typeof fieldData === 'object' && fieldData.value) {
+        extractedFields[fieldId] = fieldData.value;
+      }
+    }
+  } else {
+    Object.assign(extractedFields, formData);
+  }
+  
+  for (const [fieldId, label] of Object.entries(fieldMapping)) {
+    if (extractedFields[fieldId]) {
+      message += `*${label}:* ${extractedFields[fieldId]}\n`;
     }
   }
   
-  const knownFields = Object.keys(fields);
-  const customFields = Object.entries(formData)
-    .filter(([key]) => !knownFields.includes(key.toLowerCase()));
+  const mappedFields = Object.keys(fieldMapping);
+  const unmappedFields = Object.entries(extractedFields)
+    .filter(([key]) => !mappedFields.includes(key));
   
-  if (customFields.length > 0) {
+  if (unmappedFields.length > 0) {
     message += `\n*Outros campos:*\n`;
-    customFields.forEach(([key, value]) => {
-      message += `${key}: ${value}\n`;
+    unmappedFields.forEach(([key, value]) => {
+      if (value && typeof value !== 'object') {
+        message += `${key}: ${value}\n`;
+      }
     });
   }
   
