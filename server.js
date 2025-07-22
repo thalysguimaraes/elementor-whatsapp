@@ -30,7 +30,8 @@ app.post('/webhook/elementor', async (req, res) => {
     
     const clientNumbers = [
       process.env.WHATSAPP_NUMBER_1,
-      process.env.WHATSAPP_NUMBER_2
+      process.env.WHATSAPP_NUMBER_2,
+      process.env.WHATSAPP_NUMBER_3
     ].filter(Boolean);
     
     if (clientNumbers.length === 0) {
