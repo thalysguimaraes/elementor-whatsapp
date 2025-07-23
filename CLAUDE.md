@@ -24,7 +24,7 @@ Serviço webhook que recebe submissões de formulários do Elementor e envia men
 ```javascript
 const fieldMapping = {
   'name': 'Nome',           // Campo nome real
-  'email': 'Empresa',       // ATENÇÃO: Este campo recebe o nome da empresa
+  'empresa': 'Empresa',     // Campo empresa
   'message': 'Site',        // ATENÇÃO: Este campo recebe o site
   'field_cef3ba0': 'Telefone',
   'field_389b567': 'E-mail', // Este é o e-mail real
@@ -39,7 +39,7 @@ O Elementor envia os dados neste formato:
   "form": { "id": "0ae175f", "name": "New Form" },
   "fields": {
     "name": { "value": "Nome do cliente", ... },
-    "email": { "value": "Nome da empresa", ... },
+    "empresa": { "value": "Nome da empresa", ... },
     "message": { "value": "Site da empresa", ... },
     "field_cef3ba0": { "value": "Telefone", ... },
     "field_389b567": { "value": "email@real.com", ... },
@@ -80,7 +80,7 @@ curl -X POST http://localhost:3000/webhook/elementor \
   -d '{
     "fields": {
       "name": {"value": "Teste"},
-      "email": {"value": "Empresa Teste"},
+      "empresa": {"value": "Empresa Teste"},
       "message": {"value": "site.com"},
       "field_cef3ba0": {"value": "11999999999"},
       "field_389b567": {"value": "teste@email.com"}

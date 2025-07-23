@@ -67,7 +67,7 @@ function formatMessage(formData) {
   
   const fieldMapping = {
     'name': 'Nome',
-    'email': 'Empresa',
+    'empresa': 'Empresa',
     'message': 'Site',
     'field_cef3ba0': 'Telefone',
     'field_389b567': 'E-mail',
