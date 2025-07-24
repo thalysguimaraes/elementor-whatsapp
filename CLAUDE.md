@@ -23,12 +23,12 @@ Serviço webhook que recebe submissões de formulários do Elementor e envia men
 
 ```javascript
 const fieldMapping = {
-  'name': 'Nome',           // Campo nome real
-  'empresa': 'Empresa',     // Campo empresa
-  'message': 'Site',        // ATENÇÃO: Este campo recebe o site
-  'field_cef3ba0': 'Telefone',
-  'field_389b567': 'E-mail', // Este é o e-mail real
-  'field_69b2d23': 'Mensagem' // Este é a mensagem real (opcional)
+  'nome': 'Nome',
+  'empresa': 'Empresa',
+  'site': 'Site',
+  'telefone': 'Telefone',
+  'e-mail': 'E-mail',
+  'quer adiantar alguma informação? (opcional)': 'Mensagem'
 };
 ```
 
@@ -38,12 +38,12 @@ O Elementor envia os dados neste formato:
 {
   "form": { "id": "0ae175f", "name": "New Form" },
   "fields": {
-    "name": { "value": "Nome do cliente", ... },
+    "nome": { "value": "Nome do cliente", ... },
     "empresa": { "value": "Nome da empresa", ... },
-    "message": { "value": "Site da empresa", ... },
-    "field_cef3ba0": { "value": "Telefone", ... },
-    "field_389b567": { "value": "email@real.com", ... },
-    "field_69b2d23": { "value": "Mensagem opcional", ... }
+    "site": { "value": "Site da empresa", ... },
+    "telefone": { "value": "Telefone", ... },
+    "e-mail": { "value": "email@real.com", ... },
+    "quer adiantar alguma informação? (opcional)": { "value": "Mensagem opcional", ... }
   },
   "meta": { ... }
 }
@@ -79,11 +79,11 @@ curl -X POST http://localhost:3000/webhook/elementor \
   -H "Content-Type: application/json" \
   -d '{
     "fields": {
-      "name": {"value": "Teste"},
+      "nome": {"value": "Teste"},
       "empresa": {"value": "Empresa Teste"},
-      "message": {"value": "site.com"},
-      "field_cef3ba0": {"value": "11999999999"},
-      "field_389b567": {"value": "teste@email.com"}
+      "site": {"value": "site.com"},
+      "telefone": {"value": "11999999999"},
+      "e-mail": {"value": "teste@email.com"}
     }
   }'
 ```

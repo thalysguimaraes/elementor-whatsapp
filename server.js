@@ -66,12 +66,12 @@ function formatMessage(formData) {
   message += `Data/Hora: ${timestamp}\n\n`;
   
   const fieldMapping = {
-    'name': 'Nome',
+    'nome': 'Nome',
     'empresa': 'Empresa',
-    'message': 'Site',
-    'field_cef3ba0': 'Telefone',
-    'field_389b567': 'E-mail',
-    'field_69b2d23': 'Mensagem'
+    'site': 'Site',
+    'telefone': 'Telefone',
+    'e-mail': 'E-mail',
+    'quer adiantar alguma informação? (opcional)': 'Mensagem'
   };
   
   const extractedFields = {};
