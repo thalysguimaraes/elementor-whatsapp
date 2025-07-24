@@ -28,6 +28,13 @@ app.post('/webhook/elementor', async (req, res) => {
   try {
     const formData = req.body;
     
+    console.log('Environment check:', {
+      hasInstanceId: !!process.env.Z_API_INSTANCE_ID,
+      hasToken: !!process.env.Z_API_TOKEN,
+      hasClientToken: !!process.env.Z_API_CLIENT_TOKEN,
+      whatsappNumbers: [process.env.WHATSAPP_NUMBER_1, process.env.WHATSAPP_NUMBER_2, process.env.WHATSAPP_NUMBER_3].filter(Boolean)
+    });
+    
     const clientNumbers = [
       process.env.WHATSAPP_NUMBER_1,
       process.env.WHATSAPP_NUMBER_2,
@@ -52,39 +59,47 @@ app.post('/webhook/elementor', async (req, res) => {
     
   } catch (error) {
     console.error('Webhook error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
+      details: error.response?.data || error.stack
     });
   }
 });
 
 function formatMessage(formData) {
+  console.log('formatMessage received:', JSON.stringify(formData, null, 2));
+  
   const timestamp = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
   
   let message = `*Nova submissão de formulário*\n`;
   message += `Data/Hora: ${timestamp}\n\n`;
   
   const fieldMapping = {
-    'nome': 'Nome',
+    'name': 'Nome',
     'empresa': 'Empresa',
-    'site': 'Site',
-    'telefone': 'Telefone',
-    'e-mail': 'E-mail',
-    'quer adiantar alguma informação? (opcional)': 'Mensagem'
+    'message': 'Site',
+    'field_cef3ba0': 'Telefone',
+    'field_389b567': 'E-mail',
+    'field_69b2d23': 'Mensagem'
   };
   
   const extractedFields = {};
   
   if (formData.fields && typeof formData.fields === 'object') {
+    console.log('Processing fields object:', Object.keys(formData.fields));
     for (const [fieldId, fieldData] of Object.entries(formData.fields)) {
       if (fieldData && typeof fieldData === 'object' && fieldData.value) {
         extractedFields[fieldId] = fieldData.value;
       }
     }
   } else {
+    console.log('No fields object found, using formData directly');
     Object.assign(extractedFields, formData);
   }
+  
+  console.log('Extracted fields:', extractedFields);
   
   for (const [fieldId, label] of Object.entries(fieldMapping)) {
     if (extractedFields[fieldId]) {
