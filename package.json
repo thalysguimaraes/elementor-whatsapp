@@ -1,17 +1,23 @@
 {
   "name": "elementor-whatsapp-webhook",
-  "version": "1.0.0",
-  "description": "Webhook service to send WhatsApp messages from Elementor forms",
-  "main": "server.js",
+  "version": "3.2.0",
+  "description": "Cloudflare Workers webhook service to send WhatsApp messages from Elementor forms",
+  "main": "worker.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail",
+    "test": "./test-webhook.sh",
+    "panel": "cd manager && npm start",
+    "manager:install": "cd manager && npm install",
+    "db:create": "wrangler d1 create elementor-whatsapp-forms",
+    "db:init": "wrangler d1 execute elementor-whatsapp-forms --file=./schema.sql --remote",
+    "db:query": "wrangler d1 execute elementor-whatsapp-forms",
+    "kv:create": "wrangler kv:namespace create MONITOR_STATE",
+    "setup": "npm run manager:install && echo 'Setup complete! Create D1 database with: npm run db:create'"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "axios": "^1.6.0",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5"
+  "devDependencies": {
+    "wrangler": "^3.0.0"
   },
   "engines": {
     "node": ">=16.0.0"

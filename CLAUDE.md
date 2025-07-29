@@ -1,51 +1,82 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Elementor WhatsApp Webhook - Contexto do Projeto
 
 ## Visão Geral
-Serviço webhook que recebe submissões de formulários do Elementor e envia mensagens WhatsApp automaticamente usando Z-API.
+Serviço webhook hospedado no Cloudflare Workers que recebe submissões de formulários do Elementor e envia mensagens WhatsApp automaticamente usando Z-API.
 
 ## Arquitetura
-- **Framework**: Node.js + Express
-- **Hospedagem**: Render.com (deploy automático via GitHub)
-- **API WhatsApp**: Z-API (usando instância existente do cliente)
-- **URL do Webhook**: https://elementor-whatsapp.onrender.com/webhook/elementor
+- **Plataforma**: Cloudflare Workers (serverless)
+- **API WhatsApp**: Z-API (serviço gerenciado)
+- **Banco de Dados**: Cloudflare D1 (SQLite)
+- **URL do Webhook**: https://elementor-whatsapp.thalys.workers.dev/webhook/:formId
+- **Linguagem**: JavaScript (Worker API)
+- **Gerenciador CLI**: Node.js com Inquirer.js
 
-## Credenciais Z-API (já configuradas)
+## Credenciais Z-API (configuradas em wrangler.toml)
 - Instance ID: ***REMOVED***
 - Instance Token: ***REMOVED***
 - Client Token: ***REMOVED***
 
 ## Números WhatsApp Configurados
-- WHATSAPP_NUMBER_1: 5534991517110
-- WHATSAPP_NUMBER_2: 5511888888888 (atualizar conforme necessário)
+- WHATSAPP_NUMBER_1: 5534984106712
+- WHATSAPP_NUMBER_2: 5534984106954
+- WHATSAPP_NUMBER_3: 5534991606334
+- WHATSAPP_NUMBER_4: 5534991517110
 
 ## Mapeamento de Campos do Elementor
-**IMPORTANTE**: Os IDs dos campos não correspondem ao seu significado semântico!
+**IMPORTANTE**: O webhook suporta 3 formatos diferentes que o Elementor pode enviar!
 
 ```javascript
 const fieldMapping = {
+  // Formato direto JSON (campos com nomes em português)
   'nome': 'Nome',
   'empresa': 'Empresa',
   'site': 'Site',
   'telefone': 'Telefone',
   'e-mail': 'E-mail',
-  'quer adiantar alguma informação? (opcional)': 'Mensagem'
+  'quer adiantar alguma informação? (opcional)': 'Mensagem',
+  
+  // Formato URL-encoded (campos com IDs genéricos)
+  'name': 'Nome',
+  'message': 'Site',
+  'field_cef3ba0': 'Telefone',
+  'field_389b567': 'E-mail',
+  'field_69b2d23': 'Mensagem'
 };
 ```
 
 ## Estrutura de Dados do Elementor
-O Elementor envia os dados neste formato:
+O webhook detecta automaticamente e suporta 3 formatos diferentes:
+
+### Formato 1: JSON Aninhado
 ```json
 {
   "form": { "id": "0ae175f", "name": "New Form" },
   "fields": {
     "nome": { "value": "Nome do cliente", ... },
-    "empresa": { "value": "Nome da empresa", ... },
-    "site": { "value": "Site da empresa", ... },
-    "telefone": { "value": "Telefone", ... },
-    "e-mail": { "value": "email@real.com", ... },
-    "quer adiantar alguma informação? (opcional)": { "value": "Mensagem opcional", ... }
-  },
-  "meta": { ... }
+    "empresa": { "value": "Nome da empresa", ... }
+  }
+}
+```
+
+### Formato 2: URL-Encoded Achatado
+```
+fields[name][value]=Nome do cliente
+fields[empresa][value]=Nome da empresa
+fields[field_cef3ba0][value]=(34) 99999-9999
+```
+
+### Formato 3: JSON Direto
+```json
+{
+  "nome": "Nome do cliente",
+  "empresa": "Nome da empresa",
+  "site": "site.com.br",
+  "telefone": "(34) 99999-9999",
+  "e-mail": "email@empresa.com"
 }
 ```
 
@@ -62,53 +93,216 @@ Data/Hora: 21/07/2025, 12:01:43
 *Mensagem:* Texto opcional
 ```
 
-## Repositório GitHub
-- URL: https://github.com/thalysguimaraes/elementor-whatsapp
-- Branch: main
-- Deploy automático no Render ao fazer push
+## Sistema de Gerenciamento de Contatos
 
-## Comandos Úteis
+### Visão Geral
+O sistema agora inclui um gerenciador de contatos centralizado que permite reutilizar números WhatsApp entre diferentes formulários.
 
-### Testar localmente
+### Funcionalidades
+- **Gerenciamento Centralizado**: Todos os contatos em um só lugar
+- **Reutilização**: Use os mesmos contatos em múltiplos formulários
+- **Informações Detalhadas**: Nome, empresa, cargo e notas para cada contato
+- **Seleção Fácil**: Interface de checkbox para selecionar múltiplos contatos ao criar/editar formulários
+
+### Como Usar
+1. **Acessar Gerenciador**: `npm run panel` → Escolha "📞 Manage Contacts"
+2. **Adicionar Contato**: Forneça nome, número WhatsApp, cargo (opcional), empresa (opcional)
+3. **Criar Formulário**: Ao criar um formulário, selecione os contatos que receberão as mensagens
+4. **Editar Contatos**: Atualizações nos contatos refletem automaticamente em todos os formulários
+
+### Estrutura do Banco de Dados
+```sql
+contacts (
+  id INTEGER PRIMARY KEY,
+  phone_number TEXT UNIQUE,
+  name TEXT NOT NULL,
+  company TEXT,
+  role TEXT,
+  notes TEXT,
+  created_at, updated_at
+)
+
+form_numbers (
+  ... campos existentes ...,
+  contact_id INTEGER REFERENCES contacts(id)
+)
+```
+
+## Gerenciamento de Formulários Multi-Form
+
+### Funcionalidades
+- **Múltiplos Formulários**: Crie quantos formulários precisar, cada um com seu próprio webhook
+- **Mapeamento Flexível**: Configure campos diferentes para cada formulário
+- **URLs Únicas**: Cada formulário tem sua URL: `/webhook/{formId}`
+- **CLI Manager**: Interface interativa para gerenciar formulários e contatos
+
+### Comandos do Manager
+```bash
+# Instalar dependências do manager
+npm run manager:install
+
+# Executar o painel de gerenciamento
+npm run panel
+
+# Criar banco de dados D1
+npm run db:create
+
+# Inicializar esquema do banco
+npm run db:init
+
+# Consultar banco de dados
+npm run db:query
+```
+
+## Sistema de Monitoramento Z-API
+
+### Funcionalidades
+- **Verificação Automática**: Cron job a cada 15 minutos
+- **Alertas por Email**: Notificações via Resend quando WhatsApp desconecta
+- **Estado Persistente**: KV storage para rastrear mudanças de status
+- **Histórico**: Mantém últimas 100 verificações
+
+### Configuração
+```toml
+# wrangler.toml
+[triggers]
+crons = ["*/15 * * * *"]  # A cada 15 minutos
+
+[vars]
+ALERT_EMAIL = "mail@thalys.design"
+MONITORING_ENABLED = "true"
+RESEND_API_KEY = "re_..."
+RESEND_FROM_EMAIL = "monitor@thalysguimaraes.com"
+```
+
+## Comandos de Desenvolvimento
+
+### Instalação
 ```bash
 npm install
-npm start
+npm run setup  # Instala dependências do manager também
+```
 
-# Teste com curl
-curl -X POST http://localhost:3000/webhook/elementor \
+### Desenvolvimento Local
+```bash
+npm run dev    # Inicia servidor de desenvolvimento local
+wrangler dev   # Alternativa direta
+```
+
+### Deploy para Cloudflare Workers
+```bash
+npm run deploy # Deploy para produção
+wrangler deploy # Alternativa direta
+```
+
+### Monitoramento e Logs
+```bash
+npm run tail              # Ver logs em tempo real
+wrangler tail             # Alternativa direta
+wrangler tail --format pretty  # Logs formatados
+```
+
+### Banco de Dados
+```bash
+# Criar KV namespace para monitoramento
+npm run kv:create
+
+# Executar migrações
+wrangler d1 execute elementor-whatsapp-forms --file=./migrations/001_add_contacts_safe.sql --remote
+```
+
+### Testar webhook
+```bash
+npm test          # Executa script de teste
+./test-webhook.sh # Teste formato URL-encoded
+
+# Teste formato JSON direto
+curl -X POST https://elementor-whatsapp.thalys.workers.dev/webhook/elementor \
   -H "Content-Type: application/json" \
   -d '{
-    "fields": {
-      "nome": {"value": "Teste"},
-      "empresa": {"value": "Empresa Teste"},
-      "site": {"value": "site.com"},
-      "telefone": {"value": "11999999999"},
-      "e-mail": {"value": "teste@email.com"}
-    }
+    "nome": "Teste",
+    "empresa": "Empresa Teste",
+    "site": "site.com",
+    "telefone": "(34) 99999-9999",
+    "e-mail": "teste@email.com"
   }'
 ```
 
-### Deploy
-```bash
-git add -A
-git commit -m "Sua mensagem"
-git push origin main
-# Render faz deploy automático
-```
+## Estrutura do Código
 
-## Logs e Debugging
-- Logs disponíveis no painel do Render
-- Console.log do webhook mostra estrutura completa recebida
-- Verificar se as variáveis de ambiente estão configuradas no Render
+### worker.js
+- Implementação principal do Cloudflare Worker
+- Suporta 3 formatos de dados do Elementor
+- Processa requisições de forma assíncrona
+- Envia mensagens para múltiplos números em paralelo
+- Logging estruturado em JSON para observabilidade
+- Tratamento de erros robusto com categorização
+
+### Endpoints
+- `GET /` - Status do serviço e versão
+- `POST /webhook/elementor` - Recebe dados do Elementor
+- `GET /health` - Verificação de saúde e conectividade Z-API
+- `OPTIONS /*` - Suporte CORS para requisições preflight
+
+### Observabilidade
+- Logs estruturados em JSON com metadados completos
+- Rastreamento de erros por categoria (validação, API, rede)
+- Métricas de performance por requisição
+- Suporte para Cloudflare Workers Logs (dashboard)
+- Configuração em `wrangler.toml` com `[observability] enabled = true`
+
+### Tratamento de Erros
+- Validação de campos obrigatórios
+- Verificação de formato de dados
+- Respostas HTTP apropriadas (200, 400, 500)
+- Logs detalhados de falhas com contexto
+- Fallback para dados brutos quando formato é desconhecido
+
+## Repositório GitHub
+- URL: https://github.com/thalysguimaraes/elementor-whatsapp
+- Branch: main
 
 ## Notas Importantes
-1. **Não validamos números**: Z-API permite enviar para qualquer número
-2. **Sem limite de mensagens**: Z-API não tem limites de envio
-3. **Formato dos números**: Usar formato completo (DDI + DDD + número)
-4. **Deploy automático**: Qualquer push para main dispara novo deploy
 
-## Próximos Passos Potenciais
-- [ ] Adicionar mais números de destino (WHATSAPP_NUMBER_3, etc)
-- [ ] Implementar template de mensagem customizável
-- [ ] Adicionar webhook de confirmação de entrega
-- [ ] Implementar fila de retry para falhas
+### Limitações do Elementor
+1. **Metadados ausentes**: Elementor não envia data/hora por padrão a menos que outra ação (como email) inclua campos meta
+2. **IDs inconsistentes**: Campos personalizados podem ter IDs diferentes entre formulários
+3. **Sem retry automático**: Elementor não tenta reenviar webhooks falhos
+4. **Content-Type variável**: Pode enviar como JSON ou form-encoded
+
+### Boas Práticas
+1. **Sempre validar entrada**: Verificar campos obrigatórios antes de processar
+2. **Logs estruturados**: Usar JSON para facilitar queries no dashboard
+3. **Status codes corretos**: 200 para sucesso, 4xx para erros do cliente, 5xx para erros do servidor
+4. **Não expor segredos**: Credenciais apenas em wrangler.toml ou secrets do Cloudflare
+
+### Solução de Problemas
+1. **Mensagens não enviadas**: Verificar logs com `wrangler tail` para detalhes
+2. **Formato não reconhecido**: Webhook loga dados brutos para análise
+3. **Erros Z-API**: Verificar status da instância e credenciais
+4. **Rate limits**: Adicionar delays se necessário entre envios
+
+## Histórico de Mudanças
+1. **v3.2.0** (29/01/2025): Melhorias na navegação do CLI e sistema de contatos
+   - Sistema completo de gerenciamento de contatos centralizado
+   - Navegação aprimorada com opções de cancelamento em todas as operações
+   - Breadcrumb navigation mostrando hierarquia de menus
+   - Fluxo contínuo sem saída automática após ações
+   - Comando renomeado de `npm run manage` para `npm run panel`
+   - Integração de contatos com formulários (seleção por checkbox)
+   - Monitoramento Z-API com alertas via Resend API
+   - KV Storage para estado de monitoramento
+   - Migrações de banco de dados para adicionar tabela `contacts`
+2. **v3.1.0**: Sistema de gerenciamento de contatos e monitoramento Z-API
+   - Tabela `contacts` para gerenciamento centralizado
+   - CLI interativo para gerenciar contatos
+   - Reutilização de contatos entre formulários
+   - Monitoramento automático com alertas por email
+3. **v3.0.0**: Sistema multi-formulários com D1 database
+   - Suporte para múltiplos formulários com URLs únicas
+   - Gerenciador CLI com Inquirer.js
+   - Banco de dados D1 para configurações
+4. **v2.0.0**: Removido suporte Node/Express, apenas Cloudflare Workers
+5. **v1.x**: Migração Render → Cloudflare Workers para melhor performance
+6. **Suporte multi-formato**: Detecta automaticamente 3 formatos do Elementor
+7. **Observabilidade aprimorada**: Logs estruturados e monitoramento nativo
