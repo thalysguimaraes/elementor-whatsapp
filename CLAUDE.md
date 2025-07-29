@@ -15,16 +15,18 @@ Serviço webhook hospedado no Cloudflare Workers que recebe submissões de formu
 - **Linguagem**: JavaScript (Worker API)
 - **Gerenciador CLI**: Node.js com Inquirer.js
 
-## Credenciais Z-API (configuradas em wrangler.toml)
-- Instance ID: ***REMOVED***
-- Instance Token: ***REMOVED***
-- Client Token: ***REMOVED***
+## Configuração Z-API
+As credenciais Z-API são armazenadas como variáveis de ambiente no `wrangler.toml`:
+- `ZAPI_INSTANCE_ID`
+- `ZAPI_INSTANCE_TOKEN`
+- `ZAPI_CLIENT_TOKEN`
 
-## Números WhatsApp Configurados
-- WHATSAPP_NUMBER_1: 5534984106712
-- WHATSAPP_NUMBER_2: 5534984106954
-- WHATSAPP_NUMBER_3: 5534991606334
-- WHATSAPP_NUMBER_4: 5534991517110
+## Sistema de Números WhatsApp
+Os números WhatsApp são gerenciados exclusivamente através do banco de dados D1:
+- Configurados por formulário no gerenciador CLI (`npm run panel`)
+- Armazenados na tabela `form_numbers` com relacionamento com `contacts`
+- Não há mais números hardcoded no código ou variáveis de ambiente
+- Formulários sem configuração no banco retornarão erro
 
 ## Mapeamento de Campos do Elementor
 **IMPORTANTE**: O webhook suporta 3 formatos diferentes que o Elementor pode enviar!
@@ -132,9 +134,10 @@ form_numbers (
 
 ### Funcionalidades
 - **Múltiplos Formulários**: Crie quantos formulários precisar, cada um com seu próprio webhook
-- **Mapeamento Flexível**: Configure campos diferentes para cada formulário
+- **Gerenciamento Dinâmico**: Todos os números são configurados via banco de dados, não há mais números hardcoded
+- **Sistema de Contatos**: Contatos centralizados que podem ser reutilizados entre formulários
 - **URLs Únicas**: Cada formulário tem sua URL: `/webhook/{formId}`
-- **CLI Manager**: Interface interativa para gerenciar formulários e contatos
+- **CLI Manager**: Interface interativa (`npm run panel`) para gerenciar formulários e contatos
 
 ### Comandos do Manager
 ```bash
@@ -163,17 +166,21 @@ npm run db:query
 - **Histórico**: Mantém últimas 100 verificações
 
 ### Configuração
-```toml
-# wrangler.toml
-[triggers]
-crons = ["*/15 * * * *"]  # A cada 15 minutos
+As configurações de monitoramento são definidas em `wrangler.toml`:
+- **Cron**: Executa a cada 15 minutos
+- **Email de Alerta**: Configurado via `ALERT_EMAIL`
+- **API de Email**: Resend API para notificações
+- **Estado**: Armazenado em KV namespace `MONITOR_STATE`
 
-[vars]
-ALERT_EMAIL = "mail@thalys.design"
-MONITORING_ENABLED = "true"
-RESEND_API_KEY = "re_..."
-RESEND_FROM_EMAIL = "monitor@thalysguimaraes.com"
-```
+## Notas de Configuração
+
+### Dependências do Projeto
+- **whatsapp-cloudflare-workers**: Instalado durante testes mas NÃO é compatível com Workers
+- **qrcode**: Instalado para testes, pode ser removido com `npm uninstall qrcode whatsapp-cloudflare-workers`
+
+### Arquivos de Teste
+- Vários scripts de teste foram criados: `test-webhook.sh`, `test-monitoring.sh`, etc.
+- Úteis para debugging e verificação de funcionamento
 
 ## Comandos de Desenvolvimento
 
@@ -281,6 +288,17 @@ curl -X POST https://elementor-whatsapp.thalys.workers.dev/webhook/elementor \
 2. **Formato não reconhecido**: Webhook loga dados brutos para análise
 3. **Erros Z-API**: Verificar status da instância e credenciais
 4. **Rate limits**: Adicionar delays se necessário entre envios
+
+## Alternativas Testadas e Descartadas
+
+### whatsapp-cloudflare-workers (Janeiro 2025)
+- **Tentativa**: Migrar de Z-API para solução independente usando o pacote `whatsapp-cloudflare-workers`
+- **Problema**: Apesar do nome, o pacote não é compatível com Cloudflare Workers devido a:
+  - Uso de APIs Node.js específicas (ex: `setInterval().unref()`)
+  - Dependências profundas de módulos Node.js não disponíveis em Workers
+  - WebSocket implementation incompatível
+- **Decisão**: Manter Z-API como solução confiável e estável
+- **Branch de teste**: `feature/whatsapp-independent` (deletada após testes)
 
 ## Histórico de Mudanças
 1. **v3.2.0** (29/01/2025): Melhorias na navegação do CLI e sistema de contatos

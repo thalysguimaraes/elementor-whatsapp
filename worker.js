@@ -515,12 +515,7 @@ async function getFormConfiguration(env, formId) {
           { field_id: 'field_389b567', field_label: 'E-mail' },
           { field_id: 'field_69b2d23', field_label: 'Mensagem' }
         ],
-        numbers: [
-          { phone_number: env.WHATSAPP_NUMBER_1 },
-          { phone_number: env.WHATSAPP_NUMBER_2 },
-          { phone_number: env.WHATSAPP_NUMBER_3 },
-          { phone_number: env.WHATSAPP_NUMBER_4 }
-        ].filter(n => n.phone_number)
+        numbers: [] // Legacy numbers removed - must be configured via CLI
       };
     }
     
@@ -585,12 +580,7 @@ function getDefaultConfiguration(env) {
       { field_id: 'field_389b567', field_label: 'E-mail' },
       { field_id: 'field_69b2d23', field_label: 'Mensagem' }
     ],
-    numbers: [
-      { phone_number: env.WHATSAPP_NUMBER_1 },
-      { phone_number: env.WHATSAPP_NUMBER_2 },
-      { phone_number: env.WHATSAPP_NUMBER_3 },
-      { phone_number: env.WHATSAPP_NUMBER_4 }
-    ].filter(n => n.phone_number)
+    numbers: [] // Legacy numbers removed - must be configured via CLI
   };
 }
 
