@@ -1,0 +1,30 @@
+# Elementor WhatsApp Manager Configuration
+# Copy this file to ~/.config/ewctl/config.yaml and update with your values
+
+cloudflare:
+  account_id: ${CLOUDFLARE_ACCOUNT_ID}  # Your Cloudflare account ID
+  api_token: ${CLOUDFLARE_API_TOKEN}    # API token with D1 permissions
+  database_id: ${DATABASE_ID}           # D1 database ID
+  worker_url: https://elementor-whatsapp.workers.dev  # Your worker URL
+
+zapi:
+  instance_id: ${ZAPI_INSTANCE_ID}      # Z-API instance ID
+  instance_token: ${ZAPI_INSTANCE_TOKEN} # Z-API instance token
+  client_token: ${ZAPI_CLIENT_TOKEN}    # Z-API client token
+
+ui:
+  theme: charm              # Options: default, dark, light, charm
+  mouse: true              # Enable mouse support
+  animations: true         # Enable animations
+  vim_bindings: false      # Enable vim-style keybindings
+  auto_refresh: 30s        # Auto-refresh interval
+  confirm_destructive: true # Confirm before destructive actions
+
+# Optional: Define profiles for different environments
+profiles:
+  dev:
+    worker_url: http://localhost:8787
+  staging:
+    worker_url: https://staging.workers.dev
+  production:
+    worker_url: https://elementor-whatsapp.workers.dev
