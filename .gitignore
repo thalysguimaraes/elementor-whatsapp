@@ -45,6 +45,7 @@ config.yml
 # Cloudflare
 .wrangler/
 wrangler.toml.local
+.dev.vars
 
 # Logs
 *.log
