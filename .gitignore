@@ -76,7 +76,8 @@ backup-node-version/
 backup-*/
 
 # Test scripts
-*.sh
+test-*.sh
+!setup-secrets.sh
 !examples/*.sh
 
 # Local Claude configuration
