@@ -1,0 +1,35 @@
+name = "elementor-whatsapp"
+main = "worker.js"
+compatibility_date = "2025-01-21"
+
+# Observability configuration for Wrangler v3
+[observability.logs]
+enabled = true
+
+# Cron trigger for Z-API monitoring
+[triggers]
+crons = ["*/15 * * * *"]  # Every 15 minutes
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "elementor-whatsapp-forms"
+database_id = "b0331e9e-5ae8-4ee5-b785-d1dfa56dc613"
+
+# KV namespace for monitoring state
+[[kv_namespaces]]
+binding = "MONITOR_STATE"
+id = "4cc56089be2240f2867884cc5b34634f"
+
+[vars]
+# Non-sensitive configuration
+ALERT_EMAIL = "mail@thalys.design"
+MONITORING_ENABLED = "true"
+MONITOR_WHATSAPP_NUMBER = "5534991517110"
+RESEND_FROM_EMAIL = "monitor@thalysguimaraes.com"
+
+# Sensitive values should be set as secrets using:
+# wrangler secret put ZAPI_INSTANCE_ID
+# wrangler secret put ZAPI_INSTANCE_TOKEN  
+# wrangler secret put ZAPI_CLIENT_TOKEN
+# wrangler secret put RESEND_API_KEY
