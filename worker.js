@@ -407,59 +407,90 @@ export default {
     }));
 
     try {
-      // Check Z-API status
+      // Ensure D1 monitoring tables exist
+      await ensureMonitoringTables(env);
+
+      // Fetch current Z-API status
       const zapiStatus = await checkZAPIStatus(env);
-      
-      // Get previous state from KV
-      const previousState = await env.MONITOR_STATE.get('zapi-status', { type: 'json' }) || {};
-      
+
+      // Load previous state from D1
+      const { results: prevRows } = await env.DB
+        .prepare('SELECT connected, session, status_json FROM monitoring_state WHERE key = ?')
+        .bind('zapi-status')
+        .all();
+
+      let previousConnected = null;
+      let previousState = {};
+      if (prevRows && prevRows.length > 0) {
+        previousConnected = !!prevRows[0].connected;
+        try {
+          previousState = prevRows[0].status_json ? JSON.parse(prevRows[0].status_json) : {};
+        } catch (_) {
+          previousState = {};
+        }
+      }
+
       console.log(JSON.stringify({
         type: 'monitoring_status',
         timestamp: new Date().toISOString(),
         current: zapiStatus,
-        previous: previousState
+        previous: { connected: previousConnected, ...previousState }
       }));
 
-      // Check if status changed from connected to disconnected
-      if (previousState.connected === true && zapiStatus.connected === false) {
-        console.log('Z-API disconnection detected, sending alert...');
-        await sendAlertEmail(env, {
-          subject: '🚨 Z-API WhatsApp Desconectado',
-          issue: 'WhatsApp desconectado',
-          details: zapiStatus
-        });
-      }
+      const statusChanged = previousConnected === null
+        ? true // bootstrap into D1
+        : (previousConnected !== !!zapiStatus.connected);
 
-      // Check if status changed from disconnected to connected
-      if (previousState.connected === false && zapiStatus.connected === true) {
-        console.log('Z-API reconnection detected, sending recovery notification...');
-        await sendAlertEmail(env, {
-          subject: '✅ Z-API WhatsApp Reconectado',
-          issue: 'WhatsApp reconectado',
-          details: zapiStatus
-        });
-      }
+      if (statusChanged) {
+        // Send alerts only on transitions after initial bootstrap
+        if (previousConnected !== null) {
+          if (previousConnected === true && zapiStatus.connected === false) {
+            console.log('Z-API disconnection detected, sending alert...');
+            await sendAlertEmail(env, {
+              subject: '🚨 Z-API WhatsApp Desconectado',
+              issue: 'WhatsApp desconectado',
+              details: zapiStatus
+            });
+          }
 
-      // Store current state
-      await env.MONITOR_STATE.put('zapi-status', JSON.stringify({
-        ...zapiStatus,
-        lastChecked: new Date().toISOString()
-      }));
+          if (previousConnected === false && zapiStatus.connected === true) {
+            console.log('Z-API reconnection detected, sending recovery notification...');
+            await sendAlertEmail(env, {
+              subject: '✅ Z-API WhatsApp Reconectado',
+              issue: 'WhatsApp reconectado',
+              details: zapiStatus
+            });
+          }
+        }
 
-      // Store monitoring history
-      const history = await env.MONITOR_STATE.get('monitoring-history', { type: 'json' }) || [];
-      history.push({
-        timestamp: new Date().toISOString(),
-        connected: zapiStatus.connected,
-        session: zapiStatus.session
-      });
-      
-      // Keep only last 100 entries
-      if (history.length > 100) {
-        history.splice(0, history.length - 100);
+        // Upsert current state
+        await env.DB
+          .prepare(`
+            INSERT INTO monitoring_state (key, connected, session, status_json, last_changed)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(key) DO UPDATE SET
+              connected=excluded.connected,
+              session=excluded.session,
+              status_json=excluded.status_json,
+              last_changed=CURRENT_TIMESTAMP
+          `)
+          .bind('zapi-status', zapiStatus.connected ? 1 : 0, zapiStatus.session ? 1 : 0, JSON.stringify(zapiStatus))
+          .run();
+
+        // Append to history for status flip (or first write)
+        await env.DB
+          .prepare('INSERT INTO monitoring_history (key, connected, session, status_json) VALUES (?, ?, ?, ?)')
+          .bind('zapi-status', zapiStatus.connected ? 1 : 0, zapiStatus.session ? 1 : 0, JSON.stringify(zapiStatus))
+          .run();
+
+        // Trim to last 100 entries for this key
+        await env.DB
+          .prepare('DELETE FROM monitoring_history WHERE id NOT IN (SELECT id FROM monitoring_history WHERE key = ? ORDER BY id DESC LIMIT 100) AND key = ?')
+          .bind('zapi-status', 'zapi-status')
+          .run();
+      } else {
+        console.log('Monitoring status unchanged; skipping D1 writes');
       }
-      
-      await env.MONITOR_STATE.put('monitoring-history', JSON.stringify(history));
 
     } catch (error) {
       console.error(JSON.stringify({
@@ -724,6 +755,38 @@ async function performHealthCheck(env) {
 }
 
 // New monitoring functions
+
+async function ensureMonitoringTables(env) {
+  try {
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS monitoring_state (
+        key TEXT PRIMARY KEY,
+        connected INTEGER NOT NULL,
+        session INTEGER,
+        status_json TEXT,
+        last_changed DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    await env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS monitoring_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        key TEXT NOT NULL,
+        connected INTEGER NOT NULL,
+        session INTEGER,
+        status_json TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    await env.DB.prepare(`
+      CREATE INDEX IF NOT EXISTS idx_monitoring_history_key_id
+        ON monitoring_history(key, id DESC)
+    `).run();
+  } catch (e) {
+    console.error('Failed to ensure monitoring tables:', e.message);
+  }
+}
 
 async function checkZAPIStatus(env) {
   try {

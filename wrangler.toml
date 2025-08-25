@@ -16,10 +16,7 @@ binding = "DB"
 database_name = "elementor-whatsapp-forms"
 database_id = "b0331e9e-5ae8-4ee5-b785-d1dfa56dc613"
 
-# KV namespace for monitoring state
-[[kv_namespaces]]
-binding = "MONITOR_STATE"
-id = "4cc56089be2240f2867884cc5b34634f"
+## Removed KV namespace for monitoring; now using D1 tables instead
 
 [vars]
 # Non-sensitive configuration

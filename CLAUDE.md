@@ -162,15 +162,20 @@ npm run db:query
 ### Funcionalidades
 - **Verificação Automática**: Cron job a cada 15 minutos
 - **Alertas por Email**: Notificações via Resend quando WhatsApp desconecta
-- **Estado Persistente**: KV storage para rastrear mudanças de status
-- **Histórico**: Mantém últimas 100 verificações
+- **Estado Persistente (D1)**: Armazenado em tabelas do D1, escreve apenas quando o status muda
+- **Histórico**: Mantém as últimas 100 mudanças de status em D1
 
 ### Configuração
 As configurações de monitoramento são definidas em `wrangler.toml`:
 - **Cron**: Executa a cada 15 minutos
 - **Email de Alerta**: Configurado via `ALERT_EMAIL`
 - **API de Email**: Resend API para notificações
-- **Estado**: Armazenado em KV namespace `MONITOR_STATE`
+- **Estado**: Armazenado no D1 (`monitoring_state`, `monitoring_history`)
+
+Nota: Para reduzir o consumo e sair do KV, o Worker agora:
+- Lê o estado atual do D1 e só grava quando o campo `connected` muda.
+- Atualiza o `monitoring_history` apenas em mudanças de status (mantém últimas 100 entradas por chave).
+- Removeu a dependência do KV `MONITOR_STATE`.
 
 ## Notas de Configuração
 
@@ -211,11 +216,9 @@ wrangler tail --format pretty  # Logs formatados
 
 ### Banco de Dados
 ```bash
-# Criar KV namespace para monitoramento
-npm run kv:create
-
-# Executar migrações
+# Executar migrações (contatos + monitoramento)
 wrangler d1 execute elementor-whatsapp-forms --file=./migrations/001_add_contacts_safe.sql --remote
+wrangler d1 execute elementor-whatsapp-forms --file=./migrations/002_add_monitoring.sql --remote
 ```
 
 ### Testar webhook
@@ -309,7 +312,7 @@ curl -X POST https://elementor-whatsapp.thalys.workers.dev/webhook/elementor \
    - Comando renomeado de `npm run manage` para `npm run panel`
    - Integração de contatos com formulários (seleção por checkbox)
    - Monitoramento Z-API com alertas via Resend API
-   - KV Storage para estado de monitoramento
+   - D1 storage para estado/histórico de monitoramento (migração do KV)
    - Migrações de banco de dados para adicionar tabela `contacts`
 2. **v3.1.0**: Sistema de gerenciamento de contatos e monitoramento Z-API
    - Tabela `contacts` para gerenciamento centralizado

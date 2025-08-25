@@ -76,3 +76,24 @@ INSERT INTO form_numbers (form_id, phone_number, label) VALUES
   ('default', '5534984106954', 'Number 2'),
   ('default', '5534991606334', 'Number 3'),
   ('default', '5534991517110', 'Number 4');
+
+-- Monitoring tables (replace KV usage)
+CREATE TABLE IF NOT EXISTS monitoring_state (
+  key TEXT PRIMARY KEY,
+  connected INTEGER NOT NULL,
+  session INTEGER,
+  status_json TEXT,
+  last_changed DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS monitoring_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL,
+  connected INTEGER NOT NULL,
+  session INTEGER,
+  status_json TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_monitoring_history_key_id
+  ON monitoring_history(key, id DESC);
